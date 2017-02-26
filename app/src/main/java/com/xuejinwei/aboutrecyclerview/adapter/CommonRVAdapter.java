@@ -2,12 +2,15 @@ package com.xuejinwei.aboutrecyclerview.adapter;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * Created by xuejinwei on 2017/2/25.
@@ -16,10 +19,15 @@ import java.util.List;
  */
 
 public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonViewHolder> {
+    public static final int VIEW_TYPE_HEADER = 1024;
+    public static final int VIEW_TYPE_FOOTER = 1025;
 
-    protected Context mContext;
-    protected int     mLayoutId;
-    protected List<T> mDatas = new ArrayList<>();
+    protected View headerView;
+    protected View footerView;
+
+    protected Context                  mContext;
+    protected int                      mLayoutId;
+    protected List<T>                  mDatas;
     protected LayoutInflater           mInflater;
     private   OnGItemClickListener     onGItemClickListener;
     private   OnGItemLongClickListener onGItemLongClickListener;
@@ -28,7 +36,8 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
         mContext = context;
         mInflater = LayoutInflater.from(context);
         mLayoutId = layoutId;
-        mDatas = datas;
+        mDatas = new ArrayList<>();
+        mDatas.addAll(datas);
     }
 
     public CommonRVAdapter(Context context, int layoutId) {
@@ -40,26 +49,170 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
 
     @Override
     public CommonViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        CommonViewHolder gViewHolder;
-        gViewHolder = CommonViewHolder.createViewHolder(mContext, parent, mLayoutId);
-        setListener(parent, gViewHolder, viewType);
-        return gViewHolder;
+        if (viewType == VIEW_TYPE_HEADER) {
+            return new CommonViewHolder(mContext, headerView);
+        } else if (viewType == VIEW_TYPE_FOOTER) {
+            return new CommonViewHolder(mContext, footerView);
+        } else {
+            return CommonViewHolder.createViewHolder(mContext, parent, mLayoutId);
+        }
     }
 
     @Override
     public void onBindViewHolder(CommonViewHolder holder, int position) {
-        convert(holder, mDatas.get(position));
+        switch (holder.getItemViewType()) {
+            case VIEW_TYPE_HEADER:
+            case VIEW_TYPE_FOOTER:
+                break;
+            default:
+                // 这里如果有header的话，就减去header的个数
+                convert(holder, mDatas.get(position - getHeaderExtraViewCount()));
+                setListener(holder, position - getHeaderExtraViewCount());
+                break;
+        }
     }
 
     public abstract void convert(CommonViewHolder gViewHolder, T t);
 
+
+    @Override
+    public int getItemViewType(int position) {
+        if (headerView != null && position == 0) {
+            return VIEW_TYPE_HEADER;
+        } else if (footerView != null && position == mDatas.size() + getHeaderExtraViewCount()) {
+            return VIEW_TYPE_FOOTER;
+        } else {
+            return super.getItemViewType(position);
+        }
+    }
+
+
+    /**
+     * 设置item点击
+     */
+    private void setListener(final CommonViewHolder viewHolder, final int position) {
+        if (onGItemClickListener != null) {
+            viewHolder.getConvertView().setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (onGItemClickListener != null) {
+                        if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
+                            return;
+                        }
+                        onGItemClickListener.onItemClick(mDatas.get(position), position);
+                    }
+                }
+            });
+        }
+        if (onGItemLongClickListener != null) {
+            viewHolder.getConvertView().setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    if (onGItemLongClickListener != null) {
+                        int position = viewHolder.getAdapterPosition();
+                        if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
+                            return false;
+                        }
+                        return onGItemLongClickListener.onItemLongClick(mDatas.get(position), position);
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
+    /**
+     * 添加HeaderView
+     *
+     * @param headerView 顶部View对象
+     */
+    public void addHeaderView(View headerView) {
+        if (headerView == null) {
+            Log.w(TAG, "add the header view is null");
+            return;
+        }
+        this.headerView = headerView;
+        notifyDataSetChanged();
+    }
+
+    /**
+     * 移除HeaderView
+     */
+    public void removeHeaderView() {
+        if (headerView != null) {
+            headerView = null;
+            notifyDataSetChanged();
+        }
+    }
+
+    /**
+     * 添加FooterView
+     *
+     * @param footerView View对象
+     */
+    public void addFooterView(View footerView) {
+        if (footerView == null) {
+            Log.w(TAG, "add the footer view is null");
+            return;
+        }
+        this.footerView = footerView;
+        notifyDataSetChanged();
+    }
+
+    /**
+     * 移除FooterView
+     */
+    public void removeFooterView() {
+        if (footerView != null) {
+            footerView = null;
+            notifyDataSetChanged();
+        }
+    }
+
+    /**
+     * 获取附加View的数量,包括HeaderView和FooterView
+     *
+     * @return 数量
+     */
+    public int getExtraViewCount() {
+        int extraViewCount = 0;
+        if (headerView != null) {
+            extraViewCount++;
+        }
+        if (footerView != null) {
+            extraViewCount++;
+        }
+        return extraViewCount;
+    }
+
+    /**
+     * 获取顶部附加View数量,即HeaderView数量
+     *
+     * @return 数量
+     */
+    public int getHeaderExtraViewCount() {
+        return headerView == null ? 0 : 1;
+    }
+
+    /**
+     * 获取底部附加View数量,即FooterView数量
+     *
+     * @return 数量, 0或1
+     */
+    public int getFooterExtraViewCount() {
+        return footerView == null ? 0 : 1;
+    }
+
     @Override
     public int getItemCount() {
         if (mDatas == null) {
-            return 0;
+            return getExtraViewCount();
         }
-        return mDatas.size();
+        return mDatas.size() + getExtraViewCount();
     }
+
+
+    /****************数据操作相关*************/
 
     /**
      * 添加数据
@@ -107,48 +260,12 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
         mDatas.clear();
         notifyDataSetChanged();
     }
+    /****************数据操作相关end*************/
 
-    /**
-     * 获得position
-     */
-    protected int getPosition(RecyclerView.ViewHolder viewHolder) {
-        return viewHolder.getAdapterPosition();
-    }
-
-    /**
-     * 设置item点击
-     */
-    protected void setListener(final ViewGroup parent, final CommonViewHolder viewHolder, int viewType) {
-        viewHolder.getConvertView().setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (onGItemClickListener != null) {
-                    int position = getPosition(viewHolder);
-                    if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
-                        return;
-                    }
-                    onGItemClickListener.onItemClick(parent, v, mDatas.get(position), position);
-                }
-            }
-        });
-
-        viewHolder.getConvertView().setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                if (onGItemLongClickListener != null) {
-                    int position = viewHolder.getAdapterPosition();
-                    if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
-                        return false;
-                    }
-                    return onGItemLongClickListener.onItemLongClick(v, viewHolder, position);
-                }
-                return false;
-            }
-        });
-    }
 
     /**
      * 设置RV的item点击监听
+     *
      * @param onGItemClickListener 传入{@link OnGItemClickListener}
      */
     public void setOnGItemClickListener(OnGItemClickListener onGItemClickListener) {
@@ -157,18 +274,19 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
 
     /**
      * 设置RV的item长按监听事件
+     *
      * @param onGItemLongClickListener 传入 {@link OnGItemLongClickListener}
      */
-    public void setOnGItemLongClickListener(OnGItemLongClickListener onGItemLongClickListener){
+    public void setOnGItemLongClickListener(OnGItemLongClickListener onGItemLongClickListener) {
         this.onGItemLongClickListener = onGItemLongClickListener;
 
     }
 
     public interface OnGItemClickListener<T> {
-        void onItemClick(ViewGroup parent, View view, T data, int position);
+        void onItemClick(T data, int position);
     }
 
-    public interface OnGItemLongClickListener<T>{
-        boolean onItemLongClick(View view, RecyclerView.ViewHolder holder, int position);
+    public interface OnGItemLongClickListener<T> {
+        boolean onItemLongClick(T data, int position);
     }
 }
