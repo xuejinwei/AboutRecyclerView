@@ -1,7 +1,9 @@
 package com.xuejinwei.aboutrecyclerview.adapter;
 
 import android.content.Context;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -86,6 +88,37 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
         }
     }
 
+    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        if (layoutManager != null && layoutManager instanceof GridLayoutManager) {
+            final GridLayoutManager gridLayoutManager = (GridLayoutManager) layoutManager;
+            gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+                @Override
+                public int getSpanSize(int position) {
+                    return getItemViewType(position) == VIEW_TYPE_HEADER || getItemViewType(position) == VIEW_TYPE_FOOTER
+                            ? gridLayoutManager.getSpanCount() : 1;
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onViewAttachedToWindow(CommonViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        View itemView = holder.itemView;
+        ViewGroup.LayoutParams lp = itemView.getLayoutParams();
+        if (lp == null) {
+            return;
+        }
+        if (getItemViewType(holder.getAdapterPosition()) == VIEW_TYPE_HEADER || getItemViewType(holder.getAdapterPosition()) == VIEW_TYPE_FOOTER) {
+
+            if (lp instanceof StaggeredGridLayoutManager.LayoutParams) {
+                StaggeredGridLayoutManager.LayoutParams p = (StaggeredGridLayoutManager.LayoutParams) lp;
+                p.setFullSpan(true);
+            }
+        }
+    }
 
     /**
      * 设置item点击

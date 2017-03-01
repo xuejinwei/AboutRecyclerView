@@ -2,7 +2,8 @@ package com.xuejinwei.aboutrecyclerview;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,13 +11,12 @@ import android.widget.Toast;
 
 import com.xuejinwei.aboutrecyclerview.adapter.CommonRVAdapter;
 import com.xuejinwei.aboutrecyclerview.adapter.CommonViewHolder;
-import com.xuejinwei.aboutrecyclerview.recyclerview.CommonRecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    private CommonRecyclerView mCommonRecyclerView;
+    private RecyclerView mCommonRecyclerView;
 
     private CommonRVAdapter<String> mCommonRVAdapter;
 
@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mCommonRecyclerView = (CommonRecyclerView) findViewById(R.id.rv_main);
+        mCommonRecyclerView = (RecyclerView) findViewById(R.id.rv_main);
 
         mStringList = new ArrayList<>();
         for (int i = 0; i < 20; i++) {
@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         addHeaderAndFooter();
-        mCommonRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mCommonRecyclerView.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
         mCommonRecyclerView.setAdapter(mCommonRVAdapter);
 
     }
@@ -82,7 +82,5 @@ public class MainActivity extends AppCompatActivity {
         });
         mCommonRVAdapter.addHeaderView(viewAdapterHeader);
         mCommonRVAdapter.addFooterView(viewAdapterFooter);
-        mCommonRecyclerView.addHeaderView(viewRecyclerviewHeader);
-        mCommonRecyclerView.addFooterView(viewRecyclerviewFooter);
     }
 }
