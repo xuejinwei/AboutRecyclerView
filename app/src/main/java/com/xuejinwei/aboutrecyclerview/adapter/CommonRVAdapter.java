@@ -1,6 +1,7 @@
 package com.xuejinwei.aboutrecyclerview.adapter;
 
 import android.content.Context;
+import android.support.annotation.LayoutRes;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
@@ -12,20 +13,19 @@ import android.view.ViewGroup;
 import java.util.ArrayList;
 import java.util.List;
 
-import static android.content.ContentValues.TAG;
-
 /**
  * Created by xuejinwei on 2017/2/25.
  * Email:xuejinwei@outlook.com
  * 统一recyclerview的adapt，简单封装
+ * 1.数据操作添加数据 获取数据  删除数据……
+ * 2.增加header 和 footer，addHeaderView,addFooterView,也可以通过remove移除header和footer
  */
 
 public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonViewHolder> {
-    public static final int VIEW_TYPE_HEADER = 1024;
-    public static final int VIEW_TYPE_FOOTER = 1025;
+    private static final String TAG = "CommonRVAdapter";
 
-    protected View headerView;
-    protected View footerView;
+    private CommonViewHolder mHeaderHolder;
+    private CommonViewHolder mFooterHolder;
 
     protected Context                  mContext;
     protected int                      mLayoutId;
@@ -34,15 +34,23 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
     private   OnGItemClickListener     onGItemClickListener;
     private   OnGItemLongClickListener onGItemLongClickListener;
 
-    public CommonRVAdapter(Context context, int layoutId, List<T> datas) {
+    /**
+     * 创建一个CommonRVAdapter
+     * 注：传入的数据集合，执行的是 mDatas = datas，即传递的是引用，不是新建一个List添加所有。方便外面对adapter的数据进行操作
+     * 外部执行{@link #getAll()}获取的和此处传入的datas是同一个引用，所有外部没必要执行{@link #getAll()}获取数据，直接使用datas就是adapter的数据
+     *
+     * @param context  context
+     * @param layoutId adapter的布局文件，
+     * @param datas    List数据集，传递的是引用
+     */
+    public CommonRVAdapter(Context context, @LayoutRes int layoutId, List<T> datas) {
         mContext = context;
         mInflater = LayoutInflater.from(context);
         mLayoutId = layoutId;
-        mDatas = new ArrayList<>();
-        mDatas.addAll(datas);
+        mDatas = datas;
     }
 
-    public CommonRVAdapter(Context context, int layoutId) {
+    public CommonRVAdapter(Context context, @LayoutRes int layoutId) {
         mContext = context;
         mInflater = LayoutInflater.from(context);
         mLayoutId = layoutId;
@@ -51,10 +59,12 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
 
     @Override
     public CommonViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        if (viewType == VIEW_TYPE_HEADER) {
-            return new CommonViewHolder(mContext, headerView);
-        } else if (viewType == VIEW_TYPE_FOOTER) {
-            return new CommonViewHolder(mContext, footerView);
+        Log.i(TAG, "onCreateViewHolder: " + viewType);
+
+        if (viewType == getHeaderType()) {
+            return mHeaderHolder;
+        } else if (viewType == getFooterType()) {
+            return mFooterHolder;
         } else {
             return CommonViewHolder.createViewHolder(mContext, parent, mLayoutId);
         }
@@ -62,27 +72,33 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
 
     @Override
     public void onBindViewHolder(CommonViewHolder holder, int position) {
-        switch (holder.getItemViewType()) {
-            case VIEW_TYPE_HEADER:
-            case VIEW_TYPE_FOOTER:
-                break;
-            default:
-                // 这里如果有header的话，就减去header的个数
-                convert(holder, mDatas.get(position - getHeaderExtraViewCount()));
-                setListener(holder, position - getHeaderExtraViewCount());
-                break;
+        if (holder.getItemViewType() == getHeaderType()) {
+            return;
+        } else if (holder.getItemViewType() == getFooterType()) {
+            return;
+        } else {
+            // 这里如果有header的话，就减去header的个数
+            convert(holder, mDatas.get(position - getHeaderExtraViewCount()));
+            convert(holder, mDatas.get(position - getHeaderExtraViewCount()), position);
+            setListener(holder, position - getHeaderExtraViewCount());
         }
     }
 
     public abstract void convert(CommonViewHolder gViewHolder, T t);
 
+    /**
+     * 如果想在绑定viewholder时候使用position可以复写该方法
+     */
+    public void convert(CommonViewHolder gViewHolder, T t, int position) {
+
+    }
 
     @Override
     public int getItemViewType(int position) {
-        if (headerView != null && position == 0) {
-            return VIEW_TYPE_HEADER;
-        } else if (footerView != null && position == mDatas.size() + getHeaderExtraViewCount()) {
-            return VIEW_TYPE_FOOTER;
+        if (mHeaderHolder != null && position == 0) {
+            return getHeaderType();
+        } else if (mFooterHolder != null && position == mDatas.size() + getHeaderExtraViewCount()) {
+            return getFooterType();
         } else {
             return super.getItemViewType(position);
         }
@@ -96,11 +112,19 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
             gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
                 @Override
                 public int getSpanSize(int position) {
-                    return getItemViewType(position) == VIEW_TYPE_HEADER || getItemViewType(position) == VIEW_TYPE_FOOTER
+                    return getItemViewType(position) == getHeaderType() || getItemViewType(position) == getFooterType()
                             ? gridLayoutManager.getSpanCount() : 1;
                 }
             });
         }
+    }
+
+    private int getHeaderType() {
+        return mHeaderHolder == null ? -1 : mHeaderHolder.hashCode();
+    }
+
+    private int getFooterType() {
+        return mFooterHolder == null ? -1 : mFooterHolder.hashCode();
     }
 
     @Override
@@ -111,7 +135,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
         if (lp == null) {
             return;
         }
-        if (getItemViewType(holder.getAdapterPosition()) == VIEW_TYPE_HEADER || getItemViewType(holder.getAdapterPosition()) == VIEW_TYPE_FOOTER) {
+        if (getItemViewType(holder.getAdapterPosition()) == getHeaderType() || getItemViewType(holder.getAdapterPosition()) == getFooterType()) {
 
             if (lp instanceof StaggeredGridLayoutManager.LayoutParams) {
                 StaggeredGridLayoutManager.LayoutParams p = (StaggeredGridLayoutManager.LayoutParams) lp;
@@ -129,9 +153,6 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
                 @Override
                 public void onClick(View v) {
                     if (onGItemClickListener != null) {
-                        if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
-                            return;
-                        }
                         onGItemClickListener.onItemClick(mDatas.get(position), position);
                     }
                 }
@@ -142,10 +163,6 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
                 @Override
                 public boolean onLongClick(View v) {
                     if (onGItemLongClickListener != null) {
-                        int position = viewHolder.getAdapterPosition();
-                        if (position == RecyclerView.NO_POSITION) {// 如果等于-1，忽略这次点击事件
-                            return false;
-                        }
                         return onGItemLongClickListener.onItemLongClick(mDatas.get(position), position);
                     }
                     return false;
@@ -164,7 +181,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
             Log.w(TAG, "add the header view is null");
             return;
         }
-        this.headerView = headerView;
+        this.mHeaderHolder = CommonViewHolder.createViewHolder(mContext, headerView);
         notifyDataSetChanged();
     }
 
@@ -172,8 +189,8 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      * 移除HeaderView
      */
     public void removeHeaderView() {
-        if (headerView != null) {
-            headerView = null;
+        if (mHeaderHolder != null) {
+            mHeaderHolder = null;
             notifyDataSetChanged();
         }
     }
@@ -188,7 +205,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
             Log.w(TAG, "add the footer view is null");
             return;
         }
-        this.footerView = footerView;
+        this.mFooterHolder = CommonViewHolder.createViewHolder(mContext, footerView);
         notifyDataSetChanged();
     }
 
@@ -196,8 +213,8 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      * 移除FooterView
      */
     public void removeFooterView() {
-        if (footerView != null) {
-            footerView = null;
+        if (mFooterHolder != null) {
+            mFooterHolder = null;
             notifyDataSetChanged();
         }
     }
@@ -209,10 +226,10 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      */
     public int getExtraViewCount() {
         int extraViewCount = 0;
-        if (headerView != null) {
+        if (mHeaderHolder != null) {
             extraViewCount++;
         }
-        if (footerView != null) {
+        if (mFooterHolder != null) {
             extraViewCount++;
         }
         return extraViewCount;
@@ -224,7 +241,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      * @return 数量
      */
     public int getHeaderExtraViewCount() {
-        return headerView == null ? 0 : 1;
+        return mHeaderHolder == null ? 0 : 1;
     }
 
     /**
@@ -233,7 +250,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      * @return 数量, 0或1
      */
     public int getFooterExtraViewCount() {
-        return footerView == null ? 0 : 1;
+        return mFooterHolder == null ? 0 : 1;
     }
 
     @Override
@@ -263,7 +280,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
     }
 
     /**
-     * 增加一行数据
+     * 增加一行数据,末尾
      */
     public void addItem(T data) {
         mDatas.add(data);
@@ -271,7 +288,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
     }
 
     /**
-     * 增加一行数据
+     * 增加一行数据，在position位置
      */
     public void addItem(int position, T data) {
         mDatas.add(position, data);
@@ -301,7 +318,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      *
      * @param onGItemClickListener 传入{@link OnGItemClickListener}
      */
-    public void setOnGItemClickListener(OnGItemClickListener onGItemClickListener) {
+    public void setOnGItemClickListener(OnGItemClickListener<T> onGItemClickListener) {
         this.onGItemClickListener = onGItemClickListener;
     }
 
@@ -310,7 +327,7 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
      *
      * @param onGItemLongClickListener 传入 {@link OnGItemLongClickListener}
      */
-    public void setOnGItemLongClickListener(OnGItemLongClickListener onGItemLongClickListener) {
+    public void setOnGItemLongClickListener(OnGItemLongClickListener<T> onGItemLongClickListener) {
         this.onGItemLongClickListener = onGItemLongClickListener;
 
     }
