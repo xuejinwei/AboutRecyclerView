@@ -2,8 +2,8 @@ package com.xuejinwei.aboutrecyclerview;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
         mCommonRecyclerView = (RecyclerView) findViewById(R.id.rv_main);
 
         mStringList = new ArrayList<>();
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 5; i++) {
             mStringList.add("text--" + i);
         }
         mCommonRVAdapter = new CommonRVAdapter<String>(this, R.layout.item_text, mStringList) {
@@ -42,11 +42,11 @@ public class MainActivity extends AppCompatActivity {
         mCommonRVAdapter.setOnGItemClickListener(new CommonRVAdapter.OnGItemClickListener<String>() {
             @Override
             public void onItemClick(String data, int position) {
-                Toast.makeText(MainActivity.this, data, Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, position + "", Toast.LENGTH_SHORT).show();
             }
         });
         addHeaderAndFooter();
-        mCommonRecyclerView.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
+        mCommonRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mCommonRecyclerView.setAdapter(mCommonRVAdapter);
 
     }
@@ -59,13 +59,13 @@ public class MainActivity extends AppCompatActivity {
         viewAdapterHeader.findViewById(R.id.tv_text).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "this is header,adapter", Toast.LENGTH_SHORT).show();
+                mCommonRVAdapter.addItem("add" + mStringList.size());
             }
         });
         viewAdapterFooter.findViewById(R.id.tv_text).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "this is footer,adapter", Toast.LENGTH_SHORT).show();
+                mCommonRVAdapter.addItem(2,"add_position" + 2);
             }
         });
         viewRecyclerviewHeader.findViewById(R.id.tv_text).setOnClickListener(new View.OnClickListener() {

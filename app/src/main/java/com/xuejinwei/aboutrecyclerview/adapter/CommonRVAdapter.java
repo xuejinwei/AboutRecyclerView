@@ -293,6 +293,10 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
     public void addItem(int position, T data) {
         mDatas.add(position, data);
         notifyItemInserted(position);
+        if (position != mDatas.size()) {
+            // 执行notifyItemInserted，不重新onBindViewHolder，执行如下代码强制重新刷新position后面的的viewholder，否则position等不对
+            notifyItemRangeChanged(position + getHeaderExtraViewCount(), mDatas.size() - position);
+        }
     }
 
     /**
@@ -301,6 +305,10 @@ public abstract class CommonRVAdapter<T> extends RecyclerView.Adapter<CommonView
     public void removeItem(int position) {
         mDatas.remove(position);
         notifyItemRemoved(position);
+        if (position != mDatas.size()) {
+            // 执行notifyItemRemoved，不重新onBindViewHolder，执行如下代码强制重新刷新position后面的viewholder，否则position等不对
+            notifyItemRangeChanged(position + getHeaderExtraViewCount(), mDatas.size() - position);
+        }
     }
 
     /**
